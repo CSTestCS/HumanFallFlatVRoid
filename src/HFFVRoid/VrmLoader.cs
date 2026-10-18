@@ -47,6 +47,9 @@ namespace HFFVRoid
         public readonly Dictionary<string, int[]> HumanBones = new Dictionary<string, int[]>();
         public readonly List<SpringJointDef> Joints = new List<SpringJointDef>();
         public readonly List<SpringColliderDef> Colliders = new List<SpringColliderDef>();
+        /// <summary>Highest point of the head mesh (incl. hair / ears) in the rest pose, in head-bone local space.</summary>
+        public Vector3 HeadTopLocal;
+        public bool HasHeadTop;
 
         public static int[] PathOf(Transform t, Transform root)
         {
@@ -185,8 +188,8 @@ namespace HFFVRoid
             try
             {
                 BuildNodes(root.transform);
-                BuildMeshes(root.transform);
                 ReadHumanoid(model, root.transform);
+                BuildMeshes(root.transform, model);
                 if (isVrm0) ReadSprings0(model, root.transform); else ReadSprings1(model, root.transform);
             }
             catch
@@ -556,8 +559,24 @@ namespace HFFVRoid
 
         // ---- meshes
 
-        private void BuildMeshes(Transform root)
+        private void BuildMeshes(Transform root, VrmModel model)
         {
+            // Head-top search: vertices driven mostly by the head bone or anything under it (hair, ears, hats).
+            Transform head = VrmModel.Resolve(root, model.HumanBones["head"]);
+            Transform hips = VrmModel.Resolve(root, model.HumanBones["hips"]);
+            Vector3 up = (head.position - hips.position).normalized;
+            var headSet = new HashSet<Transform>();
+            var stack = new Stack<Transform>();
+            stack.Push(head);
+            while (stack.Count > 0)
+            {
+                var t = stack.Pop();
+                headSet.Add(t);
+                for (int c = 0; c < t.childCount; c++) stack.Push(t.GetChild(c));
+            }
+            float bestUp = float.NegativeInfinity;
+            Vector3 bestPoint = Vector3.zero;
+
             var jn = J.Arr(gltf, "nodes");
             var meshes = J.Arr(gltf, "meshes");
             var skins = J.Arr(gltf, "skins");
@@ -571,7 +590,9 @@ namespace HFFVRoid
                 var skin = skinIndex >= 0 && skins != null && skinIndex < skins.Count ? skins[skinIndex] : null;
 
                 Material[] materials;
-                Mesh mesh = BuildMesh(meshes[meshIndex], skin != null, out materials);
+                List<Vector3> verts;
+                List<BoneWeight> vweights;
+                Mesh mesh = BuildMesh(meshes[meshIndex], skin != null, out materials, out verts, out vweights);
                 if (mesh == null) continue;
                 mesh.name = nodes[i].name;
 
@@ -599,6 +620,31 @@ namespace HFFVRoid
                     }
                     mesh.bindposes = bindposes;
 
+                    // Rest-pose (skinned) position of head vertices: sum_i w_i * bone_i.localToWorld * bindpose_i * v
+                    var skinM = new Matrix4x4[bones.Length];
+                    var isHead = new bool[bones.Length];
+                    for (int b = 0; b < bones.Length; b++)
+                    {
+                        skinM[b] = bones[b].localToWorldMatrix * bindposes[b];
+                        isHead[b] = headSet.Contains(bones[b]);
+                    }
+                    for (int v = 0; v < verts.Count; v++)
+                    {
+                        var w = vweights[v];
+                        int dom = w.boneIndex0; float dw = w.weight0;
+                        if (w.weight1 > dw) { dom = w.boneIndex1; dw = w.weight1; }
+                        if (w.weight2 > dw) { dom = w.boneIndex2; dw = w.weight2; }
+                        if (w.weight3 > dw) { dom = w.boneIndex3; }
+                        if (dom < 0 || dom >= bones.Length || !isHead[dom]) continue;
+                        Vector3 p = Vector3.zero;
+                        if (w.weight0 > 0 && w.boneIndex0 < bones.Length) p += skinM[w.boneIndex0].MultiplyPoint3x4(verts[v]) * w.weight0;
+                        if (w.weight1 > 0 && w.boneIndex1 < bones.Length) p += skinM[w.boneIndex1].MultiplyPoint3x4(verts[v]) * w.weight1;
+                        if (w.weight2 > 0 && w.boneIndex2 < bones.Length) p += skinM[w.boneIndex2].MultiplyPoint3x4(verts[v]) * w.weight2;
+                        if (w.weight3 > 0 && w.boneIndex3 < bones.Length) p += skinM[w.boneIndex3].MultiplyPoint3x4(verts[v]) * w.weight3;
+                        float d = Vector3.Dot(p, up);
+                        if (d > bestUp) { bestUp = d; bestPoint = p; }
+                    }
+
                     var go = new GameObject(nodes[i].name + "_skin");
                     go.transform.SetParent(root, false);
                     var smr = go.AddComponent<SkinnedMeshRenderer>();
@@ -616,19 +662,35 @@ namespace HFFVRoid
                     meshObjects.Add(go.transform);
                     go.AddComponent<MeshFilter>().sharedMesh = mesh;
                     go.AddComponent<MeshRenderer>().sharedMaterials = materials;
+                    if (headSet.Contains(nodes[i]))
+                    {
+                        var m = nodes[i].localToWorldMatrix;
+                        foreach (var v in verts)
+                        {
+                            var p = m.MultiplyPoint3x4(v);
+                            float d = Vector3.Dot(p, up);
+                            if (d > bestUp) { bestUp = d; bestPoint = p; }
+                        }
+                    }
                 }
                 built++;
             }
             if (built == 0) throw new Exception("The VRM contains no usable meshes.");
+            if (!float.IsNegativeInfinity(bestUp))
+            {
+                model.HeadTopLocal = head.InverseTransformPoint(bestPoint);
+                model.HasHeadTop = true;
+            }
         }
 
-        private Mesh BuildMesh(object meshJson, bool skinned, out Material[] materials)
+        private Mesh BuildMesh(object meshJson, bool skinned, out Material[] materials,
+            out List<Vector3> positions, out List<BoneWeight> weights)
         {
             var prims = J.Arr(meshJson, "primitives");
-            var positions = new List<Vector3>();
+            positions = new List<Vector3>();
             var normals = new List<Vector3>();
             var uvs = new List<Vector2>();
-            var weights = new List<BoneWeight>();
+            weights = new List<BoneWeight>();
             var subTris = new List<int[]>();
             var mats = new List<Material>();
             bool anyNormals = true;

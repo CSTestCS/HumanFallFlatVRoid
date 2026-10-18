@@ -13,7 +13,7 @@ namespace HFFVRoid
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.hffvroid.vrmimport";
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
 
         internal static Plugin Instance;
         internal static ManualLogSource Log;
@@ -42,8 +42,10 @@ namespace HFFVRoid
             Instance = this;
             Log = Logger;
 
-            CfgScaleMode = Config.Bind("Avatar", "ScaleMode", ScaleMode.Legs,
-                "How the VRM is sized to the game character. Legs = match leg length (feet stay on the ground). Height = match full height.");
+            // (New key name so installs that already saved the old "ScaleMode = Legs" default get the new HeadTop default.)
+            CfgScaleMode = Config.Bind("Avatar", "SizeMode", ScaleMode.HeadTop,
+                "How the VRM is sized. HeadTop = top of the avatar's head level with the top of a default Human's head. " +
+                "Legs = match leg length. Height = match ankle-to-head-joint height.");
             CfgScaleMultiplier = Config.Bind("Avatar", "ScaleMultiplier", 1f, "Extra size multiplier applied after automatic scaling.");
             CfgVerticalOffset = Config.Bind("Avatar", "VerticalOffset", 0f, "Moves the avatar up (+) or down (-) in metres.");
             CfgMatchRestPose = Config.Bind("Avatar", "MatchRestPose", true,
@@ -110,6 +112,8 @@ namespace HFFVRoid
                 MenuSystem.instance.activeMenu is CustomizationRootMenu && MenuSystem.CanInvoke)
             {
                 pendingDropScan = false;
+                try { VrmLibrary.RefreshThumbnailsOnce(); }
+                catch (Exception e) { Log.LogError("Thumbnail refresh failed: " + e); }
                 try { VrmLibrary.ImportDropFolder(); }
                 catch (Exception e) { Log.LogError("Import folder scan failed: " + e); }
             }

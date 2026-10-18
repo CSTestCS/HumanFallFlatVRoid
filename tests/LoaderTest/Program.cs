@@ -68,7 +68,19 @@ namespace HFFVRoid
                 int[] path;
                 if (vrm.HumanBones.TryGetValue(Retargeter.VrmNames[i], out path)) vb[i] = VrmModel.Resolve(root, path);
             }
-            var rt = Retargeter.Create(restPos, restRot, segs, vb, root, ScaleMode.Legs, 1f, 0f, true);
+            // Head top of the stand-in "game character", in the ragdoll's rest space.
+            var hffHead = VrmModel.Resolve(hffModel.Template.transform, hffModel.HumanBones["head"]);
+            var hTopWorld = hffHead.TransformPoint(hffModel.HeadTopLocal);
+            Vector3 hTopRest = ragdollRoot.InverseTransformPoint(hTopWorld);
+            var rt = Retargeter.Create(restPos, restRot, segs, vb, root, ScaleMode.HeadTop, 1f, 0f, true,
+                hTopRest, vrm.HeadTopLocal);
+            var vHead = vb[3];
+            rt.Apply();
+            var vTopWorld = vHead.TransformPoint(vrm.HeadTopLocal);
+            var upW = ragdollRoot.rotation * Vector3.up;
+            float topGap = Vector3.Dot(vTopWorld - hTopWorld, upW);
+            Console.WriteLine("  HeadTop scale " + rt.Scale.ToString("0.000") + ": head-top height difference " + topGap.ToString("0.0000") + " m");
+            if (hffModel.HasHeadTop && vrm.HasHeadTop) Check(Math.Abs(topGap) < 0.01f, "HeadTop: head tops level");
             Func<Transform[], int, int, Vector3> Dir = (arr, a, b) => arr[b].position - arr[a].position;
             Action<string> Compare = label =>
             {
@@ -159,6 +171,14 @@ namespace HFFVRoid
                 Vector3 hips = P("hips"), head = P("head"), lh = P("leftHand"), rh = P("rightHand"), lf = P("leftFoot"), rf = P("rightFoot");
                 Console.WriteLine("  hips=" + hips + " head=" + head + " leftHand=" + lh + " rightHand=" + rh + " leftFoot=" + lf);
                 Check(head.y > hips.y && hips.y > lf.y, "upright");
+                // (A model without any head-driven mesh has no head top; the mod then falls back to Height scaling.)
+                Check(model.HasHeadTop || smrCount == 0, "head top found");
+                if (model.HasHeadTop) {
+                var headT = VrmModel.Resolve(root, model.HumanBones["head"]);
+                var topW = headT.TransformPoint(model.HeadTopLocal);
+                Console.WriteLine("  head top=" + topW + " (" + (topW.y - head.y).ToString("0.000") + " m above head joint)");
+                Check(topW.y > head.y + 0.05f && topW.y < head.y + 0.6f, "head top is plausible");
+                }
                 Check(Math.Abs(lh.y - P("leftUpperArm").y) < 0.1f, "T-pose (left arm horizontal)");
                 // Character's right is +X in Unity when facing +Z. Facing direction = Cross(right, up).
                 var right = (P("rightUpperArm") - P("leftUpperArm")).normalized;

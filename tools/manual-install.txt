@@ -19,7 +19,8 @@ HOW TO USE
 - Delete an avatar like any other preset (LOAD PRESET > DELETE).
 
 SETTINGS (after the first launch): BepInEx\config\com.hffvroid.vrmimport.cfg
-- ScaleMode / ScaleMultiplier / VerticalOffset : avatar size and height
+- SizeMode (default HeadTop: head level with a default Human's head) /
+  ScaleMultiplier / VerticalOffset : avatar size and height
 - SpringBones : hair & skirt physics on/off
 - ShadeLift : brightness of shadowed areas
 - SwapLeftRight : only if arms/legs move on the wrong side

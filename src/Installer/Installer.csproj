@@ -12,7 +12,7 @@
     <LangVersion>9.0</LangVersion>
     <Nullable>disable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Product>HFF VRoid</Product>
     <Description>Installs the HFF VRoid (VRM avatar) mod for Human: Fall Flat</Description>
     <DebugType>none</DebugType>

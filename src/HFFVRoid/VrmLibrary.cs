@@ -201,6 +201,44 @@ namespace HFFVRoid
             return last;
         }
 
+        /// <summary>
+        /// Re-renders the thumbnails of existing VRM presets once after an update that changes how avatars look
+        /// (e.g. new sizing). Tracked with a small marker file in BepInEx/VRoid.
+        /// </summary>
+        public static void RefreshThumbnailsOnce()
+        {
+            const string version = "thumbs-v2-headtop";
+            string marker = Path.Combine(RootDir, "thumbnails.version");
+            try
+            {
+                if (File.Exists(marker) && File.ReadAllText(marker).Trim() == version) return;
+                var cc = CustomizationController.instance;
+                if (cc == null) return;
+                var repo = WorkshopRepository.instance;
+                repo.ReloadLocalPresets();
+                var list = new List<RagdollPresetMetadata>();
+                foreach (var p in repo.presetRepo.BySource(WorkshopItemSource.LocalWorkshop))
+                {
+                    if (GetHash(p) == null || !File.Exists(ModelPath(GetHash(p)))) continue;
+                    FileTools.DeleteFile(p.thumbPath);
+                    p.cachedThumbnail = null;
+                    p.cachedThumbnailBytes = null;
+                    list.Add(p);
+                }
+                if (list.Count > 0)
+                {
+                    cc.EnsureThumbnails(list);
+                    Plugin.Log.LogInfo("Re-rendered " + list.Count + " VRM preset thumbnail(s).");
+                }
+                EnsureDirs();
+                File.WriteAllText(marker, version);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Thumbnail refresh failed: " + e.Message);
+            }
+        }
+
         /// <summary>After a preset is deleted, remove its .vrm if no other preset or player skin still uses it.</summary>
         public static void OnPresetDeleted(RagdollPresetMetadata deleted)
         {

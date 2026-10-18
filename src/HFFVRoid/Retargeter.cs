@@ -51,8 +51,11 @@ namespace HFFVRoid
         /// <param name="hSegs">Live segment transforms (null where missing).</param>
         /// <param name="vBones">VRM humanoid bones in the same order (null where missing). The VRM root must be at the
         /// origin with identity rotation and scale 1 when this is called.</param>
+        /// <param name="hHeadTop">Top of the game character's head mesh in the ragdoll's rest space (null = unknown).</param>
+        /// <param name="vHeadTopLocal">Top of the VRM's head mesh in head-bone local space (null = unknown).</param>
         public static Retargeter Create(Vector3[] hRestPos, Quaternion[] hRestRot, Transform[] hSegs, Transform[] vBones,
-            Transform vrmRoot, ScaleMode mode, float multiplier, float verticalOffset, bool matchRestPose)
+            Transform vrmRoot, ScaleMode mode, float multiplier, float verticalOffset, bool matchRestPose,
+            Vector3? hHeadTop = null, Vector3? vHeadTopLocal = null)
         {
             foreach (int k in new[] { HIPS, HEAD, LARM, RARM, LFOOT, RFOOT })
                 if (vBones[k] == null || hSegs[k] == null) throw new Exception("missing bone " + VrmNames[k]);
@@ -91,6 +94,7 @@ namespace HFFVRoid
             for (int i = 0; i < Count; i++) if (vBones[i] != null) vBones[i].rotation = corr[i] * A * original[i];
             Vector3 vHipsC = vBones[HIPS].position, vHeadC = vBones[HEAD].position;
             Vector3 vFeetC = (vBones[LFOOT].position + vBones[RFOOT].position) * 0.5f;
+            Vector3 vTopC = vHeadTopLocal.HasValue ? vBones[HEAD].TransformPoint(vHeadTopLocal.Value) : vHeadC;
             for (int i = 0; i < Count; i++) if (vBones[i] != null) vBones[i].rotation = original[i];
 
             // Scale
@@ -99,8 +103,14 @@ namespace HFFVRoid
             float vLeg = Vector3.Dot(vHipsC - vFeetC, hUp);
             float hHeight = Vector3.Dot(hRestPos[HEAD] - hFeet, hUp);
             float vHeight = Vector3.Dot(vHeadC - vFeetC, hUp);
+            float hTop = hHeadTop.HasValue ? Vector3.Dot(hHeadTop.Value - hFeet, hUp) : 0f;
+            float vTop = Vector3.Dot(vTopC - vFeetC, hUp);
             float scale;
-            if (mode == ScaleMode.Height && vHeight > 1e-3f && hHeight > 1e-3f) scale = hHeight / vHeight;
+            // Feet (ankles) are aligned below, so matching ankle-to-head-top distances puts both head tops level.
+            if (mode == ScaleMode.HeadTop && hHeadTop.HasValue && vHeadTopLocal.HasValue && hTop > 1e-3f && vTop > 1e-3f)
+                scale = hTop / vTop;
+            else if ((mode == ScaleMode.Height || mode == ScaleMode.HeadTop) && vHeight > 1e-3f && hHeight > 1e-3f)
+                scale = hHeight / vHeight;
             else if (vLeg > 1e-3f && hLeg > 1e-3f) scale = hLeg / vLeg;
             else scale = 1f;
             scale *= Mathf.Max(0.05f, multiplier);
@@ -147,6 +157,8 @@ namespace HFFVRoid
 
     internal enum ScaleMode
     {
+        /// <summary>Top of the avatar's head level with the top of the default game character's head.</summary>
+        HeadTop,
         /// <summary>Match leg length so the feet touch the ground like the original character.</summary>
         Legs,
         /// <summary>Match total height (feet to head).</summary>

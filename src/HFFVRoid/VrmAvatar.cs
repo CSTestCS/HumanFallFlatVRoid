@@ -123,8 +123,12 @@ namespace HFFVRoid
                 if (model.HumanBones.TryGetValue(Retargeter.VrmNames[i], out path)) vBones[i] = VrmModel.Resolve(root, path);
             }
 
+            Vector3? hHeadTop = null;
+            if (Plugin.CfgScaleMode.Value == ScaleMode.HeadTop && segs[3] != null && segs[3].transform != null)
+                hHeadTop = GameHeadTop(ragdoll, rootScale, restPos, restRot, segs[3]);
             retargeter = Retargeter.Create(restPos, restRot, segT, vBones, root, Plugin.CfgScaleMode.Value,
-                Plugin.CfgScaleMultiplier.Value, Plugin.CfgVerticalOffset.Value, Plugin.CfgMatchRestPose.Value);
+                Plugin.CfgScaleMultiplier.Value, Plugin.CfgVerticalOffset.Value, Plugin.CfgMatchRestPose.Value,
+                hHeadTop, model.HasHeadTop ? (Vector3?)model.HeadTopLocal : null);
 
             // Match the layer the game uses for this character so its cameras (incl. the thumbnail camera) see it.
             int layer = gameObject.layer;
@@ -137,6 +141,135 @@ namespace HFFVRoid
             if (Plugin.CfgSpringBones.Value && model.Joints.Count > 0)
                 springs = new SpringBoneSystem(model, root, retargeter.Scale);
             Plugin.Log.LogInfo("Attached VRM '" + model.Info.Title + "' to " + name + " (scale " + retargeter.Scale.ToString("0.000") + ").");
+        }
+
+        // ------------------------------------------------------------------ head-top of the default game character
+
+        private const int HEAD = 3, HIPS = 0;
+        private static Vector3? cachedHeadTop; // in the head segment's rest frame (world units)
+        private static bool cacheLoaded;
+        private static string CacheFile { get { return System.IO.Path.Combine(VrmLibrary.RootDir, "hff_head_top.txt"); } }
+
+        /// <summary>
+        /// Top of the default character's head in the ragdoll's rest space. Measured from the game's own body mesh
+        /// whenever the ragdoll stands in its rest pose (always true in Customize Character), remembered relative to
+        /// the head segment for use in levels, with an estimate from the head collider as a last resort.
+        /// </summary>
+        private Vector3? GameHeadTop(Ragdoll ragdoll, float rootScale, Vector3[] restPos, Quaternion[] restRot, HumanSegment head)
+        {
+            Vector3 hUp = (restPos[HEAD] - restPos[HIPS]).normalized;
+            Quaternion invHead = Quaternion.Inverse(restRot[HEAD]);
+            LoadCache();
+
+            // 1. Measure the mesh if the ragdoll is at rest right now.
+            try
+            {
+                Vector3 headNow = ragdoll.transform.InverseTransformPoint(head.transform.position) * rootScale;
+                if ((headNow - restPos[HEAD]).magnitude < 0.01f)
+                {
+                    float best = float.NegativeInfinity;
+                    Vector3 bestP = Vector3.zero;
+                    foreach (var r in FindGameRenderers())
+                    {
+                        Vector3[] verts = null;
+                        Matrix4x4 m = r.transform.localToWorldMatrix;
+                        var smr = r as SkinnedMeshRenderer;
+                        if (smr != null && smr.sharedMesh != null)
+                        {
+                            var baked = new Mesh();
+                            smr.BakeMesh(baked); // same convention as the game's own RagdollModelSkinnedMesh
+                            verts = baked.vertices;
+                            Destroy(baked);
+                        }
+                        else
+                        {
+                            var mf = r.GetComponent<MeshFilter>();
+                            if (mf != null && mf.sharedMesh != null && mf.sharedMesh.isReadable) verts = mf.sharedMesh.vertices;
+                        }
+                        if (verts == null) continue;
+                        foreach (var v in verts)
+                        {
+                            Vector3 p = ragdoll.transform.InverseTransformPoint(m.MultiplyPoint3x4(v)) * rootScale;
+                            float d = Vector3.Dot(p, hUp);
+                            if (d > best) { best = d; bestP = p; }
+                        }
+                    }
+                    float aboveHead = best - Vector3.Dot(restPos[HEAD], hUp);
+                    if (!float.IsNegativeInfinity(best) && aboveHead > 0f && aboveHead < 1f)
+                    {
+                        Vector3 local = invHead * (bestP - restPos[HEAD]);
+                        if (!cachedHeadTop.HasValue || (cachedHeadTop.Value - local).magnitude > 0.001f)
+                        {
+                            cachedHeadTop = local;
+                            SaveCache();
+                            Plugin.Log.LogInfo("Measured default character head top: " + aboveHead.ToString("0.000") + " m above the head joint.");
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Could not measure the character's head: " + e.Message);
+            }
+            if (cachedHeadTop.HasValue) return restPos[HEAD] + restRot[HEAD] * cachedHeadTop.Value;
+
+            // 2. Estimate from the head collider (top of its local bounding box).
+            var col = head.collider;
+            if (col == null) return null;
+            var pts = new List<Vector3>();
+            Vector3 c = Vector3.zero, ext = Vector3.zero;
+            var sphere = col as SphereCollider;
+            var capsule = col as CapsuleCollider;
+            var box = col as BoxCollider;
+            if (sphere != null) { c = sphere.center; ext = Vector3.one * sphere.radius; }
+            else if (capsule != null)
+            {
+                c = capsule.center;
+                ext = Vector3.one * capsule.radius;
+                ext[capsule.direction] = Mathf.Max(capsule.radius, capsule.height * 0.5f);
+            }
+            else if (box != null) { c = box.center; ext = box.size * 0.5f; }
+            else return null;
+            for (int sx = -1; sx <= 1; sx += 2)
+                for (int sy = -1; sy <= 1; sy += 2)
+                    for (int sz = -1; sz <= 1; sz += 2)
+                        pts.Add(c + new Vector3(sx * ext.x, sy * ext.y, sz * ext.z));
+            Vector3 hs = head.transform.lossyScale;
+            float bestC = float.NegativeInfinity;
+            Vector3 top = restPos[HEAD];
+            foreach (var lp in pts)
+            {
+                // Collider space == segment local space; place it in the rest pose.
+                Vector3 p = restPos[HEAD] + restRot[HEAD] * Vector3.Scale(lp, hs);
+                float d = Vector3.Dot(p, hUp);
+                if (d > bestC) { bestC = d; top = p; }
+            }
+            return top;
+        }
+
+        private static void LoadCache()
+        {
+            if (cacheLoaded) return;
+            cacheLoaded = true;
+            try
+            {
+                if (!System.IO.File.Exists(CacheFile)) return;
+                var parts = System.IO.File.ReadAllText(CacheFile).Trim().Split(' ');
+                var inv = System.Globalization.CultureInfo.InvariantCulture;
+                cachedHeadTop = new Vector3(float.Parse(parts[0], inv), float.Parse(parts[1], inv), float.Parse(parts[2], inv));
+            }
+            catch { cachedHeadTop = null; }
+        }
+
+        private static void SaveCache()
+        {
+            try
+            {
+                var v = cachedHeadTop.Value;
+                var inv = System.Globalization.CultureInfo.InvariantCulture;
+                System.IO.File.WriteAllText(CacheFile, v.x.ToString("R", inv) + " " + v.y.ToString("R", inv) + " " + v.z.ToString("R", inv));
+            }
+            catch { }
         }
 
         private List<Renderer> FindGameRenderers()

@@ -49,7 +49,7 @@ After the first launch, edit `BepInEx/config/com.hffvroid.vrmimport.cfg`:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `ScaleMode` | `Legs` | `Legs` matches leg length so the feet stay on the ground; `Height` matches full height. |
+| `SizeMode` | `HeadTop` | `HeadTop` scales every avatar so the top of its head (hair and ears included) is level with the top of a default Human's head, with feet on the ground. `Legs` matches leg length; `Height` matches ankle-to-head-joint height. |
 | `ScaleMultiplier` | `1` | Extra size factor. |
 | `VerticalOffset` | `0` | Raise (+) or lower (−) the avatar, in metres. |
 | `MatchRestPose` | `true` | Bend the VRM's limbs to the game character's rest pose before following it. |
@@ -67,6 +67,7 @@ After the first launch, edit `BepInEx/config/com.hffvroid.vrmimport.cfg`:
   marker `[vrm:<sha1>]`, and the `.vrm` itself is stored in `BepInEx/VRoid/Models/<sha1>.vrm` (VRMs are too large for
   the game's Steam Cloud preset storage). The game copies a preset's description into your active skin, so the
   marker follows you into every level. The game's own thumbnail camera photographs the avatar.
+- **Sizing**: the loader finds the highest vertex of the VRM's head (skinned rest pose). The top of the default Human's head is measured from the game's own body mesh while it stands in its T-pose on the Customize screen, and saved in `BepInEx/VRoid/hff_head_top.txt` for use in levels. The avatar is scaled so ankle-to-head-top distances match.
 - **Avatar** (`VrmAvatar.cs`, `Retargeter.cs`): a hook on `RagdollCustomization.ApplyPreset` hides the game's
   body meshes on any character whose skin carries the marker and spawns the VRM. Every frame, each VRM bone copies
   the rotation of its ragdoll segment (hips, waist, chest, head, arms, forearms, hands, thighs, legs, feet) relative
