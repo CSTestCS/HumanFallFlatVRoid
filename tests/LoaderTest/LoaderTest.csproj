@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runs the real VRM loader source against sample .vrm files using a tiny Unity API stand-in (UnityShim.cs). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <NoWarn>CS0649;CS0169;CS0108;CS0660;CS0661</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/HFFVRoid/MiniJson.cs" />
+    <Compile Include="../../src/HFFVRoid/VrmLoader.cs" />
+    <Compile Include="../../src/HFFVRoid/MaterialFactory.cs" />
+    <Compile Include="../../src/HFFVRoid/SpringBoneSystem.cs" />
+    <Compile Include="../../src/HFFVRoid/Retargeter.cs" />
+  </ItemGroup>
+</Project>

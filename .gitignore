@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+out/
+
+# Game / engine assemblies are copyrighted - never commit them (see README "Building")
+lib/
+
+# Sample VRMs downloaded by tools/test.sh
+tests/samples/
+
+*.user
+.vs/
+.idea/

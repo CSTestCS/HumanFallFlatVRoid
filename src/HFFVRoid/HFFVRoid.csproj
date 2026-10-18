@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    BepInEx plugin for Human: Fall Flat (Steam).
+    The game ships Unity 2017.4 with the .NET 4.x Mono runtime, so we target net46.
+    References to game/engine assemblies come from ../../lib (not committed - see README "Building").
+  -->
+  <PropertyGroup>
+    <TargetFramework>net46</TargetFramework>
+    <AssemblyName>HFFVRoid</AssemblyName>
+    <RootNamespace>HFFVRoid</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Version>1.0.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <DebugType>none</DebugType>
+    <NoWarn>CS0649;CS0169;CS0436;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GameLib>$(MSBuildThisFileDirectory)../../lib/game/</GameLib>
+    <BepLib>$(MSBuildThisFileDirectory)../../lib/bepinex/</BepLib>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(BepLib)BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(BepLib)0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(GameLib)Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="HumanAPI"><HintPath>$(GameLib)HumanAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(GameLib)UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameLib)UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(GameLib)UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(GameLib)UnityEngine.ImageConversionModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GameLib)UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(GameLib)UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(GameLib)UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(GameLib)UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AnimationModule"><HintPath>$(GameLib)UnityEngine.AnimationModule.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    One-click Windows installer. Plain .NET Framework 4.7.2 WinForms exe (built into Windows 10/11, no runtime
+    download). BepInEx (x86 + x64) and the plugin DLL are embedded as resources.
+    Run tools/build.sh first: it stages the embedded files in obj/payload.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>HFF-VRoid-Installer</AssemblyName>
+    <RootNamespace>HFFVRoidInstaller</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>1.0.0</Version>
+    <Product>HFF VRoid</Product>
+    <Description>Installs the HFF VRoid (VRM avatar) mod for Human: Fall Flat</Description>
+    <DebugType>none</DebugType>
+    <GenerateResourceUsePreserializedResources>false</GenerateResourceUsePreserializedResources>
+    <PayloadDir>$(MSBuildThisFileDirectory)obj/payload/</PayloadDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="$(PayloadDir)BepInEx_x86.zip" LogicalName="BepInEx_x86.zip" />
+    <EmbeddedResource Include="$(PayloadDir)BepInEx_x64.zip" LogicalName="BepInEx_x64.zip" />
+    <EmbeddedResource Include="$(PayloadDir)HFFVRoid.dll" LogicalName="HFFVRoid.dll" />
+  </ItemGroup>
+</Project>

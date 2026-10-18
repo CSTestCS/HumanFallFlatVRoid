@@ -1,0 +1,34 @@
+HFF VRoid - play Human: Fall Flat as any VRM avatar
+====================================================
+
+MANUAL INSTALL
+1. In Steam, right-click Human: Fall Flat > Manage > Browse local files.
+   (This opens the folder that contains Human.exe.)
+2. Copy EVERYTHING from this zip into that folder (merge / replace when asked).
+3. Start the game from Steam.
+
+If you used "HFF-VRoid-plugin-only.zip", you must already have BepInEx 5 installed
+(for example the "BepInExPack HumanFallFlat" from Thunderstore), and in
+BepInEx\config\BepInEx.cfg the setting  HideManagerGameObject = true  must be set.
+
+HOW TO USE
+- Main menu > Customize Character > IMPORT VRM, then choose a .vrm file.
+  (If the file window doesn't appear, press Alt+Tab - it may open behind the game.)
+- Or drop .vrm files into  BepInEx\VRoid\Import  and open Customize Character.
+- Imported avatars appear in LOAD PRESET with a thumbnail. Select one and press LOAD.
+- Delete an avatar like any other preset (LOAD PRESET > DELETE).
+
+SETTINGS (after the first launch): BepInEx\config\com.hffvroid.vrmimport.cfg
+- ScaleMode / ScaleMultiplier / VerticalOffset : avatar size and height
+- SpringBones : hair & skirt physics on/off
+- ShadeLift : brightness of shadowed areas
+- SwapLeftRight : only if arms/legs move on the wrong side
+
+NOTES
+- Other players see your avatar only if they also have this mod and the same .vrm imported.
+  Everyone else sees the plain default character.
+- Facial expressions / blinking from the VRM are not animated.
+- Log file for troubleshooting: BepInEx\LogOutput.log
+
+UNINSTALL
+Delete the folder BepInEx\plugins\HFFVRoid. To remove all mods, also delete winhttp.dll.

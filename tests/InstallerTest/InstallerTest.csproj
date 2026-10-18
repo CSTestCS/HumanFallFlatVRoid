@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Exercises the installer's file logic (not the Windows UI) against a fake game folder. Run tools/build.sh first. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <NoWarn>CA1416</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+    <Compile Include="../../src/Installer/GameInstall.cs" />
+    <EmbeddedResource Include="../../src/Installer/obj/payload/BepInEx_x86.zip" LogicalName="BepInEx_x86.zip" />
+    <EmbeddedResource Include="../../src/Installer/obj/payload/BepInEx_x64.zip" LogicalName="BepInEx_x64.zip" />
+    <EmbeddedResource Include="../../src/Installer/obj/payload/HFFVRoid.dll" LogicalName="HFFVRoid.dll" />
+  </ItemGroup>
+</Project>
