@@ -26,8 +26,9 @@ SETTINGS (after the first launch): BepInEx\config\com.hffvroid.vrmimport.cfg
 - SwapLeftRight : only if arms/legs move on the wrong side
 
 NOTES
-- Other players see your avatar only if they also have this mod and the same .vrm imported.
-  Everyone else sees the plain default character.
+- Multiplayer safe: no extra network data. Players with this mod and the same .vrm see your
+  VRM. Everyone else sees your ONLINE LOOK: in LOAD PRESET select one of your normal presets
+  and press SET AS ONLINE LOOK (marked "(online)"). If none is set they see a plain default Human.
 - Facial expressions / blinking from the VRM are not animated.
 - Log file for troubleshooting: BepInEx\LogOutput.log
 

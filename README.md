@@ -44,6 +44,20 @@ Already using BepInEx 5 (e.g. *BepInExPack HumanFallFlat* from Thunderstore)? Us
 - Remove an avatar like any other preset (*LOAD PRESET → DELETE*).
 - Works for both local players (*TOGGLE PLAYER*), in single player and online.
 
+## Multiplayer
+The mod is multiplayer-safe: it sends no extra network data and doesn't change physics. The game only shares your saved
+character preset (part names, colors, paint), exactly as without the mod.
+
+What others see while you wear a VRM:
+- **Players with this mod who imported the same `.vrm`**: your VRM avatar.
+- **Everyone else**: your **online look**, a normal preset you choose. Go to *LOAD PRESET*, select any of your normal
+  presets and press **SET AS ONLINE LOOK**. It's marked "(online)" in the list, and pressing the button again
+  (*CLEAR ONLINE LOOK*) goes back to the plain default Human, which is what they see if none is set.
+
+The online look's parts, colors and paint are copied into each VRM preset (and into the skin you're wearing), so the
+game sends that look to others. On your own screen it stays hidden behind the VRM. Changing the online look updates
+every VRM preset. If you repaint the tagged preset, the change is picked up next time you open *Customize Character*.
+
 ## Settings
 After the first launch, edit `BepInEx/config/com.hffvroid.vrmimport.cfg`:
 
@@ -57,6 +71,7 @@ After the first launch, edit `BepInEx/config/com.hffvroid.vrmimport.cfg`:
 | `SwapLeftRight` | `false` | Only if limbs move on the wrong side. |
 | `ShadeLift` | `0.35` | Brightens shadowed areas to approximate VRM toon shading (0 = plain lighting). |
 | `Shaders` | `Standard,…` | Shaders tried for VRM materials. |
+| `OnlineLookPreset` | *(empty)* | Set from the game (see Multiplayer). Folder of the preset others see. |
 | `DeleteUnusedFiles` | `true` | Deleting a VRM preset also deletes its stored `.vrm` copy when unused. |
 
 ## How it works
@@ -76,8 +91,6 @@ After the first launch, edit `BepInEx/config/com.hffvroid.vrmimport.cfg`:
   with keyboard, mouse and controller navigation.
 
 ## Limitations
-- Other players see your avatar only if they also have this mod and the same `.vrm` imported; everyone else sees the
-  plain default Human. The game's skin network sync is untouched, so it's multiplayer-safe.
 - VRM facial expressions, blinking and look-at aren't animated. MToon is approximated with Unity's Standard shader
   (no outlines).
 - The game's physics body is unchanged. A tall, thin avatar still collides like the chunky Human.

@@ -165,7 +165,8 @@ namespace HFFVRoid
             try
             {
                 Vector3 headNow = ragdoll.transform.InverseTransformPoint(head.transform.position) * rootScale;
-                if ((headNow - restPos[HEAD]).magnitude < 0.01f)
+                // Only the plain default body is measured (a VRM preset may carry another online look).
+                if ((headNow - restPos[HEAD]).magnitude < 0.01f && OnlineLook.IsDefaultBody(customization.preset))
                 {
                     float best = float.NegativeInfinity;
                     Vector3 bestP = Vector3.zero;

@@ -33,7 +33,18 @@ namespace HFFVRoid
                 return;
             }
 
-            var parent = load.transform.parent;
+            CloneButton(load, ButtonName, Label, OnImportClicked);
+            if (menu.menuButtons != null) menu.menuButtons.RebuildLinks();
+            Plugin.Log.LogInfo("Added IMPORT VRM button to the Customize Character menu.");
+        }
+
+        /// <summary>
+        /// Copies one of the game's menu buttons (same look, sound and navigation) right below it, with our own label
+        /// and click handler. Buttons further down are shifted if the menu isn't laid out automatically.
+        /// </summary>
+        public static GameObject CloneButton(Button source, string name, string label, UnityAction onClick)
+        {
+            var parent = source.transform.parent;
             var siblings = new List<RectTransform>();
             for (int i = 0; i < parent.childCount; i++)
             {
@@ -41,43 +52,43 @@ namespace HFFVRoid
                 if (rt != null && rt.GetComponent<Selectable>() != null) siblings.Add(rt);
             }
 
-            var go = UnityEngine.Object.Instantiate(load.gameObject, parent, false);
-            go.name = ButtonName;
-            go.transform.SetSiblingIndex(load.transform.GetSiblingIndex() + 1);
+            var go = UnityEngine.Object.Instantiate(source.gameObject, parent, false);
+            go.name = name;
+            go.transform.SetSiblingIndex(source.transform.GetSiblingIndex() + 1);
 
-            // Remove localisation helpers so the game doesn't rename our button back to "LOAD PRESET".
+            // Remove localisation helpers so the game doesn't rename our button back.
             foreach (var c in go.GetComponentsInChildren<Component>(true))
             {
                 if (c == null) continue;
-                string tn = c.GetType().Name;
-                if (tn.IndexOf("Locali", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (c.GetType().Name.IndexOf("Locali", StringComparison.OrdinalIgnoreCase) >= 0)
                     UnityEngine.Object.DestroyImmediate(c);
             }
 
             var button = go.GetComponent<Button>();
             button.onClick = new Button.ButtonClickedEvent();
-            button.onClick.AddListener(OnImportClicked);
+            button.onClick.AddListener(onClick);
+            SetLabel(go, label);
 
-            foreach (var tmp in go.GetComponentsInChildren<TextMeshProUGUI>(true)) tmp.text = Label;
-            foreach (var txt in go.GetComponentsInChildren<Text>(true)) txt.text = Label;
-
-            // Manual layout: if the buttons are not in a layout group, shift the ones below down by one slot.
             if (parent.GetComponent<LayoutGroup>() == null)
             {
-                var loadRt = (RectTransform)load.transform;
-                int idx = siblings.IndexOf(loadRt);
+                var srcRt = (RectTransform)source.transform;
+                int idx = siblings.IndexOf(srcRt);
                 Vector2 step = Vector2.zero;
-                if (idx >= 0 && idx + 1 < siblings.Count) step = siblings[idx + 1].anchoredPosition - loadRt.anchoredPosition;
-                else if (idx > 0) step = loadRt.anchoredPosition - siblings[idx - 1].anchoredPosition;
+                if (idx >= 0 && idx + 1 < siblings.Count) step = siblings[idx + 1].anchoredPosition - srcRt.anchoredPosition;
+                else if (idx > 0) step = srcRt.anchoredPosition - siblings[idx - 1].anchoredPosition;
                 if (step != Vector2.zero)
                 {
-                    ((RectTransform)go.transform).anchoredPosition = loadRt.anchoredPosition + step;
+                    ((RectTransform)go.transform).anchoredPosition = srcRt.anchoredPosition + step;
                     for (int i = idx + 1; i < siblings.Count; i++) siblings[i].anchoredPosition += step;
                 }
             }
+            return go;
+        }
 
-            if (menu.menuButtons != null) menu.menuButtons.RebuildLinks();
-            Plugin.Log.LogInfo("Added IMPORT VRM button to the Customize Character menu.");
+        public static void SetLabel(GameObject button, string label)
+        {
+            foreach (var tmp in button.GetComponentsInChildren<TextMeshProUGUI>(true)) tmp.text = label;
+            foreach (var txt in button.GetComponentsInChildren<Text>(true)) txt.text = label;
         }
 
         private static Button FindButton(Transform container, string method, string labelStart)

@@ -13,7 +13,7 @@ namespace HFFVRoid
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.hffvroid.vrmimport";
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
 
         internal static Plugin Instance;
         internal static ManualLogSource Log;
@@ -27,6 +27,7 @@ namespace HFFVRoid
         internal static ConfigEntry<bool> CfgMirror;
         internal static ConfigEntry<string> CfgShaderNames;
         internal static ConfigEntry<bool> CfgDeleteUnusedFiles;
+        internal static ConfigEntry<string> CfgOnlineLook;
 
         private readonly FileDialog dialog = new FileDialog();
         private CustomizationController lastController;
@@ -63,9 +64,15 @@ namespace HFFVRoid
             try { VrmLibrary.EnsureDirs(); }
             catch (Exception e) { Log.LogWarning("Could not create library folders: " + e.Message); }
 
+            CfgOnlineLook = Config.Bind("Multiplayer", "OnlineLookPreset", "",
+                "Preset folder (e.g. pr:Presets/3) that other players see while you wear a VRM. Set it in game with " +
+                "LOAD PRESET > select a normal preset > SET AS ONLINE LOOK. Empty = plain default Human.");
+
             // Patch each hook separately so one missing game method (after a game update) doesn't disable the rest.
             var harmony = new Harmony(Guid);
-            foreach (var patch in new[] { typeof(Patch_ApplyPreset), typeof(Patch_RootMenuFocus), typeof(Patch_DeletePreset) })
+            foreach (var patch in new[] { typeof(Patch_ApplyPreset), typeof(Patch_RootMenuFocus), typeof(Patch_DeletePreset),
+                         typeof(Patch_PresetMenuFocus), typeof(Patch_PresetMenuButtons), typeof(Patch_PresetItemBind),
+                         typeof(Patch_SelectSkinPreset) })
             {
                 try { harmony.CreateClassProcessor(patch).Patch(); }
                 catch (Exception e) { Log.LogError("Could not apply " + patch.Name + " - this game version may not be supported: " + e.Message); }
@@ -116,6 +123,8 @@ namespace HFFVRoid
                 catch (Exception e) { Log.LogError("Thumbnail refresh failed: " + e); }
                 try { VrmLibrary.ImportDropFolder(); }
                 catch (Exception e) { Log.LogError("Import folder scan failed: " + e); }
+                try { OnlineLook.SyncAll(); }
+                catch (Exception e) { Log.LogError("Online look sync failed: " + e); }
             }
         }
 
@@ -185,6 +194,47 @@ namespace HFFVRoid
         {
             try { VrmLibrary.OnPresetDeleted(preset); }
             catch (Exception e) { Plugin.Log.LogError("VRM cleanup failed: " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(CustomizationPresetMenu), "OnGotFocus")]
+    internal static class Patch_PresetMenuFocus
+    {
+        private static void Postfix(CustomizationPresetMenu __instance)
+        {
+            try { OnlineLook.Inject(__instance); }
+            catch (Exception e) { Plugin.Log.LogError("Adding SET AS ONLINE LOOK button failed: " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(CustomizationPresetMenu), "BindButtons")]
+    internal static class Patch_PresetMenuButtons
+    {
+        private static void Postfix(CustomizationPresetMenu __instance)
+        {
+            try { OnlineLook.Refresh(__instance); }
+            catch (Exception e) { Plugin.Log.LogError("Online look button update failed: " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(CustomizationPresetMenuItem), "Bind")]
+    internal static class Patch_PresetItemBind
+    {
+        private static void Postfix(CustomizationPresetMenuItem __instance, object data)
+        {
+            try { OnlineLook.DecorateItem(__instance, data); }
+            catch (Exception e) { Plugin.Log.LogError("Preset label update failed: " + e); }
+        }
+    }
+
+    // Wearing a VRM preset: make sure it carries the current online look before the game saves it as your skin.
+    [HarmonyPatch(typeof(PresetRepository), "SelectSkinPreset")]
+    internal static class Patch_SelectSkinPreset
+    {
+        private static void Prefix(RagdollPresetMetadata preset)
+        {
+            try { OnlineLook.ApplyTo(preset); }
+            catch (Exception e) { Plugin.Log.LogError("Online look apply failed: " + e); }
         }
     }
 }

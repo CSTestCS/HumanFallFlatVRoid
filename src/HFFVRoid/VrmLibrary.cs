@@ -153,6 +153,9 @@ namespace HFFVRoid
             {
                 Plugin.Log.LogWarning("Thumbnail capture failed: " + e.Message);
             }
+            // What other players see while this VRM is worn (after the thumbnail, which needs the default body).
+            try { OnlineLook.ApplyTo(preset); }
+            catch (Exception e) { Plugin.Log.LogWarning("Online look apply failed: " + e.Message); }
             return preset;
         }
 
@@ -242,6 +245,11 @@ namespace HFFVRoid
         /// <summary>After a preset is deleted, remove its .vrm if no other preset or player skin still uses it.</summary>
         public static void OnPresetDeleted(RagdollPresetMetadata deleted)
         {
+            if (OnlineLook.IsTagged(deleted))
+            {
+                OnlineLook.TaggedFolder = "";
+                try { OnlineLook.SyncAll(); } catch (Exception e) { Plugin.Log.LogWarning("Online look reset failed: " + e.Message); }
+            }
             string hash = GetHash(deleted);
             if (hash == null || !Plugin.CfgDeleteUnusedFiles.Value) return;
             try
